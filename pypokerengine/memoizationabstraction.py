@@ -1,5 +1,6 @@
 import handprobability as handprob
 import timeit
+import random as rand
 
 SUIT = ['C', 'D', 'H', 'S']
 CARD = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
@@ -7,23 +8,47 @@ CARD = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
 VALUE_CONVERSIONS = {'2': 0, '3': 1, '4': 2, '5': 3, '6': 4, '7': 5, '8': 6, '9': 7, '10': 8, 'J': 9, 'Q': 10, 'K': 11, 'A': 12} # Map strings to numbers (Abstraction)
 VALUE_RANGE = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] # Pre-written range array for speed
 
-def convert_hole(hole):
-    return [(card[0], VALUE_CONVERSIONS[card[1:]]) for card in [*hole]]
+def printHandDictObserved(handDict, atLeast):
+    count = 0
+    for key in handDict.keys():
+        if handDict[key]['observed'] > atLeast:
+            print(key,":", handDict[key])
+            count += 1
+    print(count)
+    return
 
-def holeAbstraction(hole):
-    boo = True
-    if hole[0][0] != hole[1][0]:
-        boo = False
-    hole = convert_hole(hole)
-    return ((hole[0][1], hole[1][1]), boo)
+def convert_hand(hand):
+    return [(card[0], VALUE_CONVERSIONS[card[1:]]) for card in [*hand]]
+
+def handAbstraction(hand):
+    hand = convert_hand(hand)
+    clubs = 0
+    diamonds = 0
+    hearts = 0
+    spades = 0
+    mults = [ 0 for _ in range(len(hand)+1)]
+    for card in hand:
+        suit = card[0]
+        if suit == 'C':
+            clubs += 1
+        elif suit == 'D':
+            diamonds += 1
+        elif suit == 'H':
+            hearts += 1
+        else:
+            spades += 1
+    mults[clubs] += 1
+    mults[diamonds] += 1
+    mults[hearts] += 1
+    mults[spades] += 1
+    
+    hand = [hand[i][1] for i in range(len(hand))]
+    hand.sort()
+    return (tuple(hand), tuple(mults[2:]))
 
 def handDistribution(hole, community, ms_limit, handDict, iter_limit=1000000, suit=SUIT, card=CARD):
     # Track total time taken to run the script
     start = timeit.default_timer()
-
-    #if holeAbstraction(hole) in handDict.keys():
-    #    print("already checked")
-    #    return handDict
 
     # Prepare the deck and known cards only once
     known = handprob.convert_known(hole, community)
@@ -61,6 +86,7 @@ def handDistribution(hole, community, ms_limit, handDict, iter_limit=1000000, su
                 else:
                     straightFlush += 1
             else:
+                print("is just flush")
                 isFlush = True
 
         # 4-kind has no relations
@@ -73,6 +99,7 @@ def handDistribution(hole, community, ms_limit, handDict, iter_limit=1000000, su
 
         # We already know the state of flushes
         elif isFlush is True:
+            print("REALLY IS FLUSH")
             flush += 1
         
         # Checking for straight vs straight flush is too different to relate
@@ -103,7 +130,7 @@ def handDistribution(hole, community, ms_limit, handDict, iter_limit=1000000, su
             break
     
     # Average the results to get a full distribution
-    abs = holeAbstraction(hole)
+    abs = handAbstraction(hole + community)
     if abs in handDict.keys():
         results = {'Royal Flush': royalFlush + handDict[abs]['with_hole']['Royal Flush'],
                 'Straight Flush':straightFlush + handDict[abs]['with_hole']['Straight Flush'],
@@ -115,7 +142,8 @@ def handDistribution(hole, community, ms_limit, handDict, iter_limit=1000000, su
                 'Two Pair':twoPair + handDict[abs]['with_hole']['Two Pair'],
                 'Pair':pair + handDict[abs]['with_hole']['Pair'],
                 'High':high + handDict[abs]['with_hole']['High']}
-        return_obj = {'hole': hole, # Return the hole cards used in the calculation
+        return_obj = {'observed': handDict[abs]['observed'] + 1,
+                    'hole': hole, # Return the hole cards used in the calculation
                     'community': community, # Same with community cards
                     'iterations': (iters + handDict[abs]['iterations']), # Return iteration count to get how effective it was
                     'with_hole': results}
@@ -131,23 +159,53 @@ def handDistribution(hole, community, ms_limit, handDict, iter_limit=1000000, su
                     'Pair':pair,
                     'High':high}
 
-        return_obj = {'hole': hole, # Return the hole cards used in the calculation
+        return_obj = {'observed': 1,
+                        'hole': hole, # Return the hole cards used in the calculation
                         'community': community, # Same with community cards
                         'iterations': iters, # Return iteration count to get how effective it was
                         'with_hole': results}
-    print(iters)
-    handDict[holeAbstraction(hole)] = return_obj
+    #print(iters)
+    handDict[abs] = return_obj
     return handDict
 
+def tupleToCard(cardTuple):
+    return cardTuple[0]+list(VALUE_CONVERSIONS.keys())[list(VALUE_CONVERSIONS.values()).index(cardTuple[1])]
+
+def sampleHolesAndComs():
+    deck = handprob.generateDeckTuple(SUIT,CARD, [])
+    sample = handprob.sampleSortDeck(deck, [])
+    int = rand.randint(2,7)
+    sample = [tupleToCard(card) for card in sample]
+    return ((sample[0:2]), (sample[2:int]))
+
+def toProbDict(handDict):
+    for key in handDict.keys():
+        handDict[key]['with_hole']['Royal Flush'] = handDict[key]['with_hole']['Royal Flush']/handDict[key]['iterations']
+        handDict[key]['with_hole']['Straight Flush'] = handDict[key]['with_hole']['Straight Flush']/handDict[key]['iterations']
+        handDict[key]['with_hole']['Four Kind'] = handDict[key]['with_hole']['Four Kind']/handDict[key]['iterations']
+        handDict[key]['with_hole']['Full House'] = handDict[key]['with_hole']['Full House']/handDict[key]['iterations']
+        handDict[key]['with_hole']['Flush'] = handDict[key]['with_hole']['Flush']/handDict[key]['iterations']
+        handDict[key]['with_hole']['Straight'] = handDict[key]['with_hole']['Straight']/handDict[key]['iterations']
+        handDict[key]['with_hole']['Three Kind'] = handDict[key]['with_hole']['Three Kind']/handDict[key]['iterations']
+        handDict[key]['with_hole']['Two Pair'] = handDict[key]['with_hole']['Two Pair']/handDict[key]['iterations']
+        handDict[key]['with_hole']['Pair'] = handDict[key]['with_hole']['Pair']/handDict[key]['iterations']
+        handDict[key]['with_hole']['High'] = handDict[key]['with_hole']['High']/handDict[key]['iterations']
+    return handDict
+
+def getDelta(handDict):
+    handDict = toProbDict(handDict)
+    baseLine = handDict[((), ())]
+    print(baseLine)
+    for key in handDict.keys():
+        return
+
+
 if __name__ == '__main__':
-    myHands = dict({})
-    
-    handDict = handDistribution(['C6', 'DK'], [], 50, myHands)
-    print(handDict)
-    handDict = handDistribution(['C6', 'SK'], [], 50, myHands)
-    print(handDict)
-    handDict = handDistribution(['C7', 'HK'], [], 50, myHands)
-    print(handDict)
-    handDict = handDistribution(['S6', 'SK'], [], 50, myHands)
-    print(handDict)
-    
+    handDict = dict({})
+    handDict = handDistribution([], [], 1000, handDict)
+    for i in range(1000):
+        print(i)
+        sample = sampleHolesAndComs()
+        handDict = handDistribution(sample[0], sample[1], 10, handDict)
+    printHandDictObserved(handDict, 0)
+    getDelta(handDict)
