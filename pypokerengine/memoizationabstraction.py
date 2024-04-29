@@ -10,11 +10,13 @@ VALUE_RANGE = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] # Pre-written range arr
 
 def printHandDictObserved(handDict, atLeast):
     count = 0
+    print("-----------------HAND DICT-----------------------")
     for key in handDict.keys():
-        if handDict[key]['observed'] > atLeast:
+        if handDict[key]['observed'] > atLeast and len(handDict[key]['hole']) == 2:
             print(key,":", handDict[key])
             count += 1
-    print(count)
+            print()
+    print("-----------------END-----------------------")
     return
 
 def convert_hand(hand):
@@ -26,7 +28,7 @@ def handAbstraction(hand):
     diamonds = 0
     hearts = 0
     spades = 0
-    mults = [ 0 for _ in range(len(hand)+1)]
+    mults = [0 for _ in range(len(hand)+1)]
     for card in hand:
         suit = card[0]
         if suit == 'C':
@@ -71,6 +73,11 @@ def handDistribution(hole, community, ms_limit, handDict, iter_limit=1000000, su
     # Count the number of loops completed
     iters = 0
     while True:
+        # Track iterations
+        iters += 1
+        # Always finish at the end if over-time or over limit of simulations
+        if timeit.default_timer() - start > ms_limit / 1000 or iter_limit < iters:
+            break
         # Get hand for simulation
         sample = handprob.sampleSortDeck(deck, known)
         cardData = handprob.processCards(sample)
@@ -83,51 +90,52 @@ def handDistribution(hole, community, ms_limit, handDict, iter_limit=1000000, su
             if handprob.checkStraightFlush(cardData) is True:
                 if handprob.checkRoyalFlush(cardData) is True:
                     royalFlush += 1
+                    continue
                 else:
                     straightFlush += 1
+                    continue
             else:
-                print("is just flush")
                 isFlush = True
 
         # 4-kind has no relations
-        elif handprob.checkFourKind(cardData) is True:
+        if handprob.checkFourKind(cardData) is True:
             fourKind += 1
+            continue
 
         # Checking full-house relation broke 3-kind :(
-        elif handprob.checkFullHouse(cardData) is True:
+        if handprob.checkFullHouse(cardData) is True:
             fullHouse += 1
+            continue
 
         # We already know the state of flushes
-        elif isFlush is True:
-            print("REALLY IS FLUSH")
+        if isFlush:
             flush += 1
+            continue
         
         # Checking for straight vs straight flush is too different to relate
-        elif handprob.checkStraight(cardData) is True:
+        if handprob.checkStraight(cardData) is True:
             straight += 1
+            continue
 
         # Already checked 3-kind
-        elif handprob.checkThreeKind(cardData) is True:
+        if handprob.checkThreeKind(cardData) is True:
         # elif isThreeKind is True:
             threeKind += 1
+            continue
 
         # There can only be 2 pairs if there is 1 pair
-        elif handprob.checkPair(cardData) is True:
+        if handprob.checkPair(cardData) is True:
             if handprob.check2Pair(cardData) is True:
                 twoPair += 1
             else:
                 pair += 1
+            continue
 
         # High-card is the best you can do if you pass over the rest
         else:
             high += 1
 
-        # Track iterations
-        iters += 1
-
-        # Always finish at the end if over-time or over limit of simulations
-        if timeit.default_timer() - start > ms_limit / 1000 or iter_limit < iters:
-            break
+        
     
     # Average the results to get a full distribution
     abs = handAbstraction(hole + community)
@@ -180,32 +188,85 @@ def sampleHolesAndComs():
 
 def toProbDict(handDict):
     for key in handDict.keys():
-        handDict[key]['with_hole']['Royal Flush'] = handDict[key]['with_hole']['Royal Flush']/handDict[key]['iterations']
-        handDict[key]['with_hole']['Straight Flush'] = handDict[key]['with_hole']['Straight Flush']/handDict[key]['iterations']
-        handDict[key]['with_hole']['Four Kind'] = handDict[key]['with_hole']['Four Kind']/handDict[key]['iterations']
-        handDict[key]['with_hole']['Full House'] = handDict[key]['with_hole']['Full House']/handDict[key]['iterations']
-        handDict[key]['with_hole']['Flush'] = handDict[key]['with_hole']['Flush']/handDict[key]['iterations']
-        handDict[key]['with_hole']['Straight'] = handDict[key]['with_hole']['Straight']/handDict[key]['iterations']
-        handDict[key]['with_hole']['Three Kind'] = handDict[key]['with_hole']['Three Kind']/handDict[key]['iterations']
-        handDict[key]['with_hole']['Two Pair'] = handDict[key]['with_hole']['Two Pair']/handDict[key]['iterations']
-        handDict[key]['with_hole']['Pair'] = handDict[key]['with_hole']['Pair']/handDict[key]['iterations']
-        handDict[key]['with_hole']['High'] = handDict[key]['with_hole']['High']/handDict[key]['iterations']
+        iters = handDict[key]['iterations']
+        handDict[key]['with_hole']['Royal Flush'] = handDict[key]['with_hole']['Royal Flush']/iters
+        handDict[key]['with_hole']['Straight Flush'] = handDict[key]['with_hole']['Straight Flush']/iters
+        handDict[key]['with_hole']['Four Kind'] = handDict[key]['with_hole']['Four Kind']/iters
+        handDict[key]['with_hole']['Full House'] = handDict[key]['with_hole']['Full House']/iters
+        handDict[key]['with_hole']['Flush'] = handDict[key]['with_hole']['Flush']/iters
+        handDict[key]['with_hole']['Straight'] = handDict[key]['with_hole']['Straight']/iters
+        handDict[key]['with_hole']['Three Kind'] = handDict[key]['with_hole']['Three Kind']/iters
+        handDict[key]['with_hole']['Two Pair'] = handDict[key]['with_hole']['Two Pair']/iters
+        handDict[key]['with_hole']['Pair'] = handDict[key]['with_hole']['Pair']/iters
+        handDict[key]['with_hole']['High'] = handDict[key]['with_hole']['High']/iters
     return handDict
 
 def getDelta(handDict):
     handDict = toProbDict(handDict)
-    baseLine = handDict[((), ())]
-    print(baseLine)
     for key in handDict.keys():
-        return
+        if key != ((), ()):
+            handDict[key].update({'delta':{'Royal Flush': handDict[key]['with_hole']['Royal Flush'] - handDict[handAbstraction(handDict[key]['community'])]['with_hole']['Royal Flush'],
+                        'Straight Flush': handDict[key]['with_hole']['Straight Flush'] - handDict[handAbstraction(handDict[key]['community'])]['with_hole']['Straight Flush'],
+                        'Four Kind': handDict[key]['with_hole']['Four Kind'] - handDict[handAbstraction(handDict[key]['community'])]['with_hole']['Four Kind'],
+                        'Full House': handDict[key]['with_hole']['Full House'] - handDict[handAbstraction(handDict[key]['community'])]['with_hole']['Full House'],
+                        'Flush': handDict[key]['with_hole']['Flush'] - handDict[handAbstraction(handDict[key]['community'])]['with_hole']['Flush'],
+                        'Straight': handDict[key]['with_hole']['Straight'] - handDict[handAbstraction(handDict[key]['community'])]['with_hole']['Straight'],
+                        'Three Kind': handDict[key]['with_hole']['Three Kind'] - handDict[handAbstraction(handDict[key]['community'])]['with_hole']['Three Kind'],
+                        'Two Pair': handDict[key]['with_hole']['Two Pair'] - handDict[handAbstraction(handDict[key]['community'])]['with_hole']['Two Pair'],
+                        'Pair': handDict[key]['with_hole']['Pair'] - handDict[handAbstraction(handDict[key]['community'])]['with_hole']['Pair'],
+                        'High': handDict[key]['with_hole']['High'] - handDict[handAbstraction(handDict[key]['community'])]['with_hole']['High']}})
+            
+    return handDict
+
+def getWinLossOdds(handDict, iters):
+    for key in handDict:
+        myHandOdds = handDict[key]['with_hole']
+        myHandOddsList = [myHandOdds[hand] for hand in handDict[key]['with_hole'].keys()]
+        myHandOddsList.reverse()
+        oppHandOdds = handDict[handAbstraction(handDict[key]['community'])]['with_hole']
+        oppHandOddsList = [oppHandOdds[hand] for hand in handDict[handAbstraction(handDict[key]['community'])]['with_hole'].keys()]
+        oppHandOddsList.reverse()
+        print(key)
+        print("my hand:", myHandOddsList)
+        print("op hand:", oppHandOddsList)
+        print()
+        myWins = 0
+        oppWins = 0
+        for i in range(iters):
+            print(i)
+            handIndex = rand.uniform(0,1)
+            myIndex = 0
+            myOddsCumulative = 0
+            while myOddsCumulative + myHandOddsList[myIndex] < handIndex:
+                myOddsCumulative += myHandOddsList[myIndex]
+                myIndex += 1
+                if myIndex > 9:
+                    break
+            oppIndex = 0
+            oppOddsCumulative = 0
+            while oppOddsCumulative + oppHandOddsList[oppIndex] < handIndex:
+                oppOddsCumulative += oppHandOddsList[oppIndex]
+                oppIndex += 1
+                if oppIndex > 9:
+                    break
+            
+            if oppIndex > myIndex:
+                oppWins += 1
+            if myIndex > oppIndex:
+                myWins += 1
+        handDict[key].update({'win_chance': myWins/iters})
+    return handDict
+
+
 
 
 if __name__ == '__main__':
     handDict = dict({})
     handDict = handDistribution([], [], 1000, handDict)
     for i in range(1000):
-        print(i)
         sample = sampleHolesAndComs()
+        handDict = handDistribution(sample[1], [], 10, handDict)
         handDict = handDistribution(sample[0], sample[1], 10, handDict)
-    printHandDictObserved(handDict, 0)
-    getDelta(handDict)
+    handDict = getDelta(handDict)
+    handDict = getWinLossOdds(handDict, 1000)
+    printHandDictObserved(handDict, 10)
