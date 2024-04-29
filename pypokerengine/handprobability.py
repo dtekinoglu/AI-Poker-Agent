@@ -211,5 +211,6 @@ if __name__ == '__main__':
         t = timeit.timeit(lambda: handDistribution(['C6', 'DK'], [], 50), number=1, globals=globals())
         print(t)
         
-        #dict = handDistribution(SUIT, CARD, ['C6', 'DK'], [], 50)
-        #print(dict)
+        dict = handDistribution(['C6', 'DK'], [], 50)
+        dict = handDistribution(['S7', 'CQ'], [], 50)
+        print(dict)

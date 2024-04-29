@@ -179,6 +179,7 @@ def handDistribution(hole, community, ms_limit, handDict, iter_limit=1000000, su
 def tupleToCard(cardTuple):
     return cardTuple[0]+list(VALUE_CONVERSIONS.keys())[list(VALUE_CONVERSIONS.values()).index(cardTuple[1])]
 
+#
 def sampleHolesAndComs():
     deck = handprob.generateDeckTuple(SUIT,CARD, [])
     sample = handprob.sampleSortDeck(deck, [])
@@ -186,6 +187,8 @@ def sampleHolesAndComs():
     sample = [tupleToCard(card) for card in sample]
     return ((sample[0:2]), (sample[2:int]))
 
+#Converts raw number of observations into probability for each hand abstraction
+#Called by getDelta() :)
 def toProbDict(handDict):
     for key in handDict.keys():
         iters = handDict[key]['iterations']
@@ -201,6 +204,7 @@ def toProbDict(handDict):
         handDict[key]['with_hole']['High'] = handDict[key]['with_hole']['High']/iters
     return handDict
 
+#Finds the difference in the probability of getting each hand given the hole cards, for each hand abstraction
 def getDelta(handDict):
     handDict = toProbDict(handDict)
     for key in handDict.keys():
@@ -226,12 +230,9 @@ def getWinLossOdds(handDict, iters):
         oppHandOdds = handDict[handAbstraction(handDict[key]['community'])]['with_hole']
         oppHandOddsList = [oppHandOdds[hand] for hand in handDict[handAbstraction(handDict[key]['community'])]['with_hole'].keys()]
         oppHandOddsList.reverse()
-        print(key)
-        print("my hand:", myHandOddsList)
-        print("op hand:", oppHandOddsList)
-        print()
         myWins = 0
         oppWins = 0
+        noWins = 0
         for i in range(iters):
             print(i)
             handIndex = rand.uniform(0,1)
@@ -254,7 +255,11 @@ def getWinLossOdds(handDict, iters):
                 oppWins += 1
             if myIndex > oppIndex:
                 myWins += 1
+            if myIndex == oppIndex:
+                noWins += 1
         handDict[key].update({'win_chance': myWins/iters})
+        handDict[key].update({'loss_chance': oppWins/iters})
+        handDict[key].update({'tie_chance': noWins/iters})
     return handDict
 
 
@@ -263,10 +268,10 @@ def getWinLossOdds(handDict, iters):
 if __name__ == '__main__':
     handDict = dict({})
     handDict = handDistribution([], [], 1000, handDict)
-    for i in range(1000):
+    for i in range(10):
         sample = sampleHolesAndComs()
         handDict = handDistribution(sample[1], [], 10, handDict)
         handDict = handDistribution(sample[0], sample[1], 10, handDict)
     handDict = getDelta(handDict)
     handDict = getWinLossOdds(handDict, 1000)
-    printHandDictObserved(handDict, 10)
+    printHandDictObserved(handDict, 0)
