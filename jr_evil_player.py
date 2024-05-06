@@ -1,7 +1,7 @@
 from pypokerengine.players import BasePokerPlayer
 import handprobability as handProb
 import random as rand
-import opponent_action as oa
+import opponent_action_logistic_regression as oa
 
 # IDEA: Rip off angela's agent and see if it works.
 ROUND_ENUM = {'preflop': 0, 'flop': 1, 'turn': 2, 'river': 3}

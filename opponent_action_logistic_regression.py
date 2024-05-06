@@ -15,12 +15,12 @@ class OpponentAction:
     def __init__(self):
         self.states = {} 
         self.weights = [
-            0.2, # hole cards weight
-            0.2, # community cards weight
-            0.2, # player bet weight
-            0.2, # opponent bet wegith
-            0.2 # opponent pocket weight
+            0.25, # community cards weight
+            0.25, # player bet weight
+            0.25, # opponent bet wegith
         ]  # Initial weights for features
+        self.learning_rate = .1
+        self.time_step = 1
 
     def softmax(self, z):
         # Softmax function
@@ -28,37 +28,44 @@ class OpponentAction:
         sum_exp_scores = sum(exp_scores)
         return [score / sum_exp_scores for score in exp_scores]
     
-    
     # Gametree calls this function when the opponent makes a move with the CURRENT state info and the action
-    def update(self, hole_cards, community_cards, my_bet, op_bet, opponent_pocket, action):
-        # Convert action to numeric label
+    def update(self, community_cards, my_bet, op_bet, action):
+        # Conv ert action to numeric label
         labels = {
-            'raise': 0, 
-            'call': 1, 
+            'raise': 0,
+            'call': 1,
             'fold': 2
         }
 
         # Feature vector
         x = [1, # Bias term
-             hole_cards, community_cards, my_bet, op_bet, opponent_pocket
+             community_cards, my_bet, op_bet
         ]
 
         # Calculate predicted probabilities using softmax
-        scores = [sum([x[i] * self.weights[i] for i in range(len(x))]) for _ in range(3)]
+        scores = [sum([x[i] * self.weights[i - 1] for i in range(1, len(x))]) for _ in range(3)]
+        print(scores)
         predicted_probs = self.softmax(scores)
+        print(predicted_probs)
+        print()
 
         # Update weights using gradient descent
         for i in range(len(self.weights)):
             for j in range(3):
-                self.weights[i] += self.learning_rate * (labels[action] == j - predicted_probs[j]) * x[i]
-    
+                self.weights[i] = (self.weights[i]*self.time_step) + self.learning_rate * (labels[action] == round(j - predicted_probs[j])) * x[i]
+                self.weights[i] = (self.weights[i]/(self.time_step + 1))
+        self.time_step += 1
+
     # Gametree should call this function to predict probabilities with the CURRENT state info and the action
-    def predict(self, hole_cards, community_cards, my_bet, opponent_pocket, action):
+    def predict(self, community_cards, my_bet, op_bet):
         # Feature vector
-        x = [1, hole_cards, community_cards, my_bet, opponent_pocket]
+        x = [1, community_cards, my_bet, op_bet]
 
         # Calculate predicted probabilities using softmax
-        scores = [sum([x[i] * self.weights[i] for i in range(len(x))]) for _ in range(3)]
+        scores = [0, 0, 0]
+        for i in range(3):
+            scores[i] += sum([x[j] * self.weights[j - 1] for j in range(1, len(x))])
+        # scores = [sum([x[i] * self.weights[i - 1] for i in range(1, len(x))]) for _ in range(3)]
         predicted_probs = self.softmax(scores)
 
         # Return predicted probabilities for each action

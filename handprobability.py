@@ -153,14 +153,16 @@ def checkStraight(values):
             return True
     return False
 
-def handDistribution(hole, community, ms_limit, max_iters):
+def handDistribution(hole, community, ms_limit, max_iters, sim=False):
     # Track total time taken to run the script
     start = timeit.default_timer()
 
     # Prepare the deck and known cards only once
-    # known = convert_known(hole, community)
-    # deck = generateDeckTuple(known)
-    known = sortKnown(hole, community)
+    known = convert_known(hole, community)
+    deck = generateDeckTuple(known)
+
+    if not sim:
+        known = sortKnown(hole, community)
 
     # Save results to help calculate averages
     royalFlush = 0
@@ -188,8 +190,10 @@ def handDistribution(hole, community, ms_limit, max_iters):
             break
 
         # Get hand for simulation
-        # sample = sampleSortDeck(deck, known)
-        sample = known
+        if sim:
+            sample = sampleSortDeck(deck, known)
+        else:
+            sample = known
         suits, values, counts = processCards(sample)
 
         # save repeat operations
@@ -330,8 +334,8 @@ def getWinLossTieOddsNew(hole, community, ms_limit, iters):
     return handDict
 
 def getWinLossTieOdds(hole, community, ms_limit, iters):
-    handDict = handDistribution(hole, community, ms_limit/2)
-    oppHand = handDistribution(handDict['community'], [], ms_limit/2)
+    handDict = handDistribution(hole, community, ms_limit/2, iters)
+    oppHand = handDistribution(handDict['community'], [], ms_limit/2, iters)
     oppHandList = [oppHand['with_hole'][key] for key in oppHand['with_hole'].keys()]
     oppHandList.reverse()
     playerHandList = [handDict['with_hole'][key] for key in handDict['with_hole'].keys()]
