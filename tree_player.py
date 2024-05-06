@@ -34,7 +34,6 @@ class TreePlayer(BasePokerPlayer):
     if opponent_uuid != '':
       for round in action_histories.keys():
         for action in action_histories[round]:
-          print(action)
           if action['uuid'] == opponent_uuid:
             try:
               opponent_bets += action['add_amount']
@@ -62,10 +61,16 @@ class TreePlayer(BasePokerPlayer):
     community_value = handOddsList.index(2)
 
     # Opponent last action
+    labels = {
+      'fold': 0,
+      'call': 1,
+      'raise': 2
+    }
+    action_prob_arrary = [0, 0, 0]
     try:
       opponent_last_action = parsed_history[-1]
-      print('update')
-      oa.update(community_cards=community_value, op_bet=opponent_bets, my_bet=my_bets, action=opponent_last_action)
+      action_prob_arrary[labels[opponent_last_action]] = 1
+      oa.update(community_cards=community_value, op_bet=opponent_bets, my_bet=my_bets, action=action_prob_arrary)
     except:
       opponent_last_action = ''
 
@@ -78,7 +83,7 @@ class TreePlayer(BasePokerPlayer):
     elif action_choice == 'raise':
       my_bets += 20
     
-    print(oa.predict(community_cards=community_value, op_bet=opponent_bets, my_bet=my_bets))
+    # oa.predict(community_cards=community_value, op_bet=opponent_bets, my_bet=my_bets)
     return action_choice
 
   def receive_game_start_message(self, game_info):
