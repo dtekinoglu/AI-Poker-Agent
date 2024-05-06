@@ -2,6 +2,7 @@ import itertools
 import random
 # import pypokerengine.handprobability as handprobability
 import handprobability
+import opponent_action_logistic_regression
 from numpy.random import choice
 
 
@@ -142,7 +143,7 @@ class LimitPokerTree:
 
     # Demo history format:
     # history = ['call', 'raise', 'raise', ...]
-    def __init__(self, hole_cards, community_cards, history, pot):
+    def __init__(self, hole_cards, community_cards, history, pot, opponent_Action:opponent_action_logistic_regression.OpponentAction):
         self.root = None
 
         # Given game state data
