@@ -71,6 +71,8 @@ class TreePlayer(BasePokerPlayer):
       opponent_last_action = parsed_history[-1]
       action_prob_arrary[labels[opponent_last_action]] = 1
       oa.update(community_cards=community_value, op_bet=opponent_bets, my_bet=my_bets, action=action_prob_arrary)
+      # For testing
+      oa._calc_prediction_accuracy()
     except:
       opponent_last_action = ''
 

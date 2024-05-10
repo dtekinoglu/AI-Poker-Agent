@@ -70,17 +70,6 @@ class OpponentAction:
         else: print('invalid opponent_pocket')
         return opponent_pocket_level
     
-    # def __calc_next_state(hole_cards, community_cards, betted, opponent_bet, opponent_pocket, action):
-    #     if action == 'fold':
-    #         return (hole_cards, community_cards, 0, 0, opponent_pocket)
-    #     elif action == 'raise':
-    #         return (hole_cards, community_cards, betted, opponent_bet + BIG_BLIND, opponent_pocket - BIG_BLIND)
-    #     elif action == 'call':
-    #         return (hole_cards, community_cards, betted, opponent_bet + SMALL_BLIND, opponent_pocket - SMALL_BLIND)
-    #     else:
-    #         print('invalid move in __calc_next_state')
-
-    
     # Gametree should call this function when the opponent makes a move with the CURRENT state info and the action
     def update(self, hole_cards, community_cards, betted, opponent_bet, opponent_pocket, action,):
         opponent_pocket_level = self.__calc_opponent_pocket_level(opponent_pocket)
